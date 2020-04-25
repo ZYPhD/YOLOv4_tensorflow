@@ -139,49 +139,37 @@ def darknet53(inputs, isTrain=True):
     net = conv(inputs, 32, activation=act.MISH, isTrain=isTrain)
 
     # res1
-    # [N, 608, 608, 32] => [N, 304, 304, 64]
     net = yolo_res_block(net, 32, 1, isTrain=isTrain)
     # res2
-    # [N, 304, 304, 64] => [N, 152, 152, 128]
     net = yolo_res_block(net, 64, 2, isTrain=isTrain)
     # res8
-    # [N, 152, 152, 128] => [N, 76, 76, 256]
     net = yolo_res_block(net, 128, 8, isTrain=isTrain)
     # 第54层特征
     # [N, 76, 76, 256]
     up_route_54 = net
     # res8
-    # [N, 76, 76, 256] => [N, 38, 38, 512]
     net = yolo_res_block(net, 256, 8, isTrain=isTrain)
     # 第85层特征
     # [N, 38, 38, 512]
     up_route_85 = net
     # res4
-    # [N, 38, 38, 512] => [N, 19, 19, 1024]
     net = yolo_res_block(net, 512, 4, isTrain=isTrain)
-    # [N, 19, 19, 1024] => [N, 19, 19, 512]
     net = yolo_conv_block(net, 1024, 1, 1, isTrain=isTrain)
     # 池化:SPP
     # [N, 19, 19, 512] => [N, 19, 19, 2048]
     net = yolo_maxpool_block(net)
     # ########## 格外注意这里通道数由 2048 => 512
-    # [N, 19, 19, 2048] => [N, 19, 19, 512]
     net = conv(net, 512, kernel_size=1, isTrain=isTrain)
-    # [N, 19, 19, 512] => [N, 19, 19, 1024]
     net = conv(net, 1024, isTrain=isTrain)
-    # [N, 19, 19, 1024] => [N, 19, 19, 512]
     net = yolo_conv_block(net, 1024, 0, 1, isTrain=isTrain)
     # 第116层特征, 用作最后的特征拼接
     # [N, 19, 19, 512]
     route_1 = net
 
     # ########## 第二阶段 ############
-    # [N, 19, 19, 512] => [N, 19, 19, 256]
     net = yolo_conv_block(net, 512, 0, 1, isTrain=isTrain)
     # 上采样
-    # [N, 19, 19, 256] => [N, 38, 38, 512]
     net = yolo_upsample_block(net, 256, up_route_85, isTrain=isTrain)
-    # [N, 38, 38, 512] => [N, 38, 38, 256]
     net = yolo_conv_block(net, 512, 2, 1, isTrain=isTrain)
     # 第126层特征，用作最后的特征拼接
     # [N, 38, 38, 256]
@@ -198,22 +186,5 @@ def darknet53(inputs, isTrain=True):
     route_3 = net
 
     return route_1, route_2, route_3
-
-
-# YOLO 的卷积实现
-def yolo_block(inputs, kernel_num, isTrain):
-    '''
-    yolo最后一段的卷积实现
-    return:route,net, route比net少一个卷积, route用于与下一层特征进行拼接
-    '''
-    net = conv(inputs, kernel_num, 1, isTrain=isTrain)
-    net = conv(net, kernel_num * 2, isTrain=isTrain)
-    net = conv(net, kernel_num, 1, isTrain=isTrain)
-    net = conv(net, kernel_num * 2, isTrain=isTrain)
-    net = conv(net, kernel_num, 1, isTrain=isTrain)
-    route = net
-    net = conv(net, kernel_num * 2, isTrain=isTrain)
-    return route, net
-
 
 
